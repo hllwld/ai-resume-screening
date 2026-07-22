@@ -1,0 +1,6 @@
+case_id,candidate_alias,expected_score_min,expected_score_max,expected_recommendation,required_flag_or_evidence
+01,AI项目匹配但工作流实操待确认,65,80,manual_review,证据应包含Prompt工程、RAG、评测流程；Dify实操应列为待确认项
+02,信息缺失候选人,0,59,supplement,缺少项目和工作经历应列入missing_information
+03,技能匹配但经验不足,60,79,manual_review,应标记相关经验待确认
+04,跨行业转行候选人,55,75,manual_review,项目相关性证据与行业经验待确认同时存在
+05,格式混乱候选人,40,70,supplement,不得编造未明确出现的技能或年限

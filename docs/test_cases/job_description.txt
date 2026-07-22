@@ -1,0 +1,1 @@
+AI 应用工程师：需要 Prompt Engineering、Python/SQL 基础、Dify/Coze/n8n 工作流经验，了解 RAG、AI Agent、API 调用；负责业务需求拆解、自动化流程配置、测试和迭代优化。

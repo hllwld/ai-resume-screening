@@ -1,0 +1,9 @@
+case_id,candidate_alias,expected_score_range,actual_score,expected_recommendation,actual_recommendation,parse_status,status,notes
+01,AI项目匹配但工作流实操待确认,65-80,72,manual_review,manual_review,success,PASS,"评分、推荐和JSON解析均符合修订后的验收标准"
+02,信息缺失候选人,0-59,2,supplement,supplement,success,PASS,"信息不足时没有自动淘汰，正确转为补充材料"
+03,技能匹配但经验不足,60-79,,,manual_review,,,待运行
+04,跨行业转行候选人,55-75,,,manual_review,,,待运行
+05,格式混乱候选人,40-70,,,supplement,,,待运行
+EDGE-01,空白简历,不适用,,,supplement,,,待运行
+EDGE-02,纯乱码文本,不适用,,,不报错,,,待运行
+EDGE-03,超长简历,不适用,,,不报错,,,待运行

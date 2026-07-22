@@ -1,0 +1,5 @@
+【岗位 JD】
+{{#start.job_description#}}
+
+【候选人简历】
+{{#start.resume_text#}}

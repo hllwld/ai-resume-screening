@@ -1,0 +1,373 @@
+app:
+  description: "**AI 简历初筛与岗位匹配助手**\n\n让 HR 上传简历、填写岗位要求后，系统自动：\n\n1. 提取候选人的基础信息、技能、项目、年限等内容\
+    \  \n2. 根据岗位 JD 给出匹配度和匹配理由  \n3. 标记风险项或待人工确认项  \n4. 输出结构化结果，便于进入 Excel / 飞书多维表格\
+    \  \n5. 生成人工复核建议，避免“AI 自动拒人”的风险  "
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  mode: workflow
+  name: 简历分析助手
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/deepseek:0.0.19@5b68617c637b62d31e7f33a9f5677b76e88f81868fb04a728e208588564b72ea
+    version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 50
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: llm
+      id: 1784705295049-source-1784705340226-target
+      selected: false
+      source: '1784705295049'
+      sourceHandle: source
+      target: '1784705340226'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: 1784705340226-source-1784710029621-target
+      selected: false
+      source: '1784705340226'
+      sourceHandle: source
+      target: '1784710029621'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: 1784710029621-source-1784705351168-target
+      selected: false
+      source: '1784710029621'
+      sourceHandle: source
+      target: '1784705351168'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        selected: false
+        title: 用户输入
+        type: start
+        variables:
+        - default: ''
+          hint: ''
+          label: resume_text候选人简历文本
+          options: []
+          placeholder: ''
+          required: true
+          type: text-input
+          variable: resume_text
+        - default: ''
+          hint: ''
+          label: job_description岗位 JD
+          options: []
+          placeholder: ''
+          required: true
+          type: text-input
+          variable: job_description
+      height: 134
+      id: '1784705295049'
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-v4-flash
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 6e8236f9-ed58-45b0-8241-90610a82bb06
+          role: system
+          text: '你是“AI 简历初筛与岗位匹配助手”。你的任务是仅基于候选人简历与岗位 JD，生成可供招聘人员复核的结构化分析。你不能替代人工做出录用、淘汰或其他高影响决定。
+
+            工作规则
+
+            只使用输入的 JD 和简历中明确出现的信息；不得补全、推断或编造候选人的经历、技能、学历、工作年限或联系方式。
+
+            简历缺少某项信息时，写入 missing_information，并将相关风险加入 risk_flags；不能把缺失直接视为不符合。
+
+            每项评分必须能在 evidence 中找到简历原文依据。无依据时该维度不得高于 50 分。
+
+            recommendation 只能是 interview、manual_review、supplement、reject。reject 仅可表示“与当前
+            JD 的明确硬性条件不匹配，建议人工确认”，绝不能作为自动淘汰指令。
+
+            任何包含学历、年龄、性别、籍贯、婚育、民族、健康状况等敏感个人信息的内容，都不得用于评分或推荐；只可标注“该信息未参与评分”。
+
+            只输出一个合法 JSON 对象；不要输出 Markdown、代码围栏、解释文字或任何 JSON 外内容。
+
+            评分规则
+
+            总分 = 技能匹配 40% + 相关经验 25% + 项目相关性 20% + 综合质量 15%，四项均为 0–100 整数。
+
+            技能匹配：Python/SQL、Prompt Engineering、工作流或低代码工具、RAG/Agent/API 等与 JD 的明确交集。
+
+            相关经验：与 JD 所要求场景和职责的直接经验。未提供年限或职责时应标为待确认，不能擅自扣成 0 分。
+
+            项目相关性：是否有 AI 应用落地、自动化、数据处理、工作流、评测或工具调用等可迁移项目证据。
+
+            综合质量：简历内容是否清晰完整，是否能说明问题拆解、验证和复盘；不得使用任何敏感个人信息。
+
+            推荐规则：
+
+            interview：总分 ≥ 80，且没有关键待确认项。
+
+            manual_review：总分 60–79，或存在需要人工判断的关键信息。
+
+            supplement：输入信息不足，无法做出可靠判断。
+
+            reject：仅当简历明确显示不满足 JD 的不可妥协硬条件时使用，并在 risk_flags 说明“建议人工确认，不应自动淘汰”。
+
+            输出 JSON Schema
+
+            {
+
+            "candidate_name": "string 或 未提供",
+
+            "match_score": 0,
+
+            "dimension_scores": {
+
+            "skill_match": 0,
+
+            "experience_relevance": 0,
+
+            "project_relevance": 0,
+
+            "overall_quality": 0
+
+            },
+
+            "recommendation": "interview | manual_review | supplement | reject",
+
+            "matched_skills": ["仅列出简历明确出现的技能"],
+
+            "missing_information": ["缺失或无法确认的信息"],
+
+            "risk_flags": ["仅业务相关、非敏感的待确认风险"],
+
+            "evidence": {
+
+            "skill_match": ["简历原文短句"],
+
+            "experience_relevance": ["简历原文短句"],
+
+            "project_relevance": ["简历原文短句"],
+
+            "overall_quality": ["简历原文短句"]
+
+            },
+
+            "recommended_interview_questions": ["最多 3 个基于待确认项的问题"],
+
+            "human_review_note": "说明此结果仅辅助人工初筛，不用于自动录用或淘汰"
+
+            }
+
+            校验要求
+
+            match_score 必须按四项权重计算后四舍五入。
+
+            所有分数必须是 0–100 的整数。
+
+            evidence 四个数组均需存在；没有证据时使用空数组。
+
+            所有数组都必须是 JSON 数组。
+
+            '
+        - id: 354f62fd-fed5-4970-b5df-e2c5f81e3645
+          role: user
+          text: '【岗位 JD】
+
+            {{#1784705295049.job_description#}}
+
+            【候选人简历】
+
+            {{#1784705295049.resume_text#}}
+
+            '
+        selected: false
+        title: LLM
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: '1784705340226'
+      position:
+        x: 377
+        y: 282
+      positionAbsolute:
+        x: 377
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        outputs:
+        - value_selector:
+          - '1784705340226'
+          - text
+          value_type: string
+          variable: result
+        - value_selector:
+          - '1784710029621'
+          - parsed_json
+          value_type: string
+          variable: parsed_json
+        - value_selector:
+          - '1784710029621'
+          - parse_status
+          value_type: string
+          variable: parse_status
+        - value_selector:
+          - '1784710029621'
+          - raw_output
+          value_type: string
+          variable: raw_output
+        selected: false
+        title: 输出
+        type: end
+      height: 166
+      id: '1784705351168'
+      position:
+        x: 933.3353751909606
+        y: 282
+      positionAbsolute:
+        x: 933.3353751909606
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\nimport re\n\n\ndef _extract_json(text: str) -> str:\n\
+          \    \"\"\"兼容模型偶发返回的 Markdown 围栏或前后说明文字。\"\"\"\n    cleaned = (text or \"\
+          \").strip()\n    cleaned = re.sub(r\"^```(?:json)?\\\\s*|\\\\s*```$\", \"\
+          \", cleaned, flags=re.IGNORECASE)\n    start, end = cleaned.find(\"{\"),\
+          \ cleaned.rfind(\"}\")\n    return cleaned[start : end + 1] if start >=\
+          \ 0 and end > start else cleaned\n\n\ndef main(llm_output: str) -> dict:\n\
+          \    raw_output = llm_output or \"\"\n    try:\n        parsed = json.loads(_extract_json(raw_output))\n\
+          \        return {\n            \"parsed_json\": json.dumps(parsed, ensure_ascii=False),\n\
+          \            \"parse_status\": \"success\",\n            \"raw_output\"\
+          : raw_output,\n        }\n    except (json.JSONDecodeError, TypeError, ValueError)\
+          \ as exc:\n        fallback = {\n            \"error\": \"parse_failed\"\
+          ,\n            \"message\": \"模型输出不是合法 JSON；请人工复核 raw_output。\",\n     \
+          \   }\n        return {\n            \"parsed_json\": json.dumps(fallback,\
+          \ ensure_ascii=False),\n            \"parse_status\": f\"failed: {type(exc).__name__}\"\
+          ,\n            \"raw_output\": raw_output,\n        }\n"
+        code_language: python3
+        outputs:
+          parse_status:
+            children: null
+            type: string
+          parsed_json:
+            children: null
+            type: string
+          raw_output:
+            children: null
+            type: string
+        selected: false
+        title: code
+        type: code
+        variables:
+        - value_selector:
+          - '1784705340226'
+          - text
+          value_type: string
+          variable: llm_output
+      height: 51
+      id: '1784710029621'
+      position:
+        x: 684
+        y: 409
+      positionAbsolute:
+        x: 684
+        y: 409
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    viewport:
+      x: -250.6019340860903
+      y: 155.68980628394675
+      zoom: 0.6597539553864473
+  rag_pipeline_variables: []
