@@ -358,7 +358,57 @@ workflow:
       type: custom
       width: 242
     - data:
-        code: "import json\nimport re\n\n\ndef _extract_json(text: str) -> str:\n    \"\"\"兼容模型偶发返回的 Markdown 围栏或前后说明文字。\"\"\"\n    cleaned = (text or \"\").strip()\n    cleaned = re.sub(r\"^```(?:json)?\\\\s*|\\\\s*```$\", \"\", cleaned, flags=re.IGNORECASE)\n    start, end = cleaned.find(\"{\"), cleaned.rfind(\"}\")\n    return cleaned[start : end + 1] if start >= 0 and end > start else cleaned\n\n\ndef main(llm_output: str) -> dict:\n    raw_output = llm_output or \"\"\n    empty = {\n        \"candidate_name\": \"\", \"match_score\": 0, \"recommendation\": \"\",\n        \"skill_match\": 0, \"experience_relevance\": 0,\n        \"project_relevance\": 0, \"overall_quality\": 0,\n        \"matched_skills\": \"\", \"missing_information\": \"\", \"risk_flags\": \"\",\n    }\n    try:\n        parsed = json.loads(_extract_json(raw_output))\n        dim = parsed.get(\"dimension_scores\", {}) or {}\n        return {\n            \"parsed_json\": json.dumps(parsed, ensure_ascii=False),\n            \"parse_status\": \"success\",\n            \"raw_output\": raw_output,\n            \"candidate_name\": parsed.get(\"candidate_name\", \"\"),\n            \"match_score\": parsed.get(\"match_score\", 0),\n            \"recommendation\": parsed.get(\"recommendation\", \"\"),\n            \"skill_match\": dim.get(\"skill_match\", 0),\n            \"experience_relevance\": dim.get(\"experience_relevance\", 0),\n            \"project_relevance\": dim.get(\"project_relevance\", 0),\n            \"overall_quality\": dim.get(\"overall_quality\", 0),\n            \"matched_skills\": \"、\".join(parsed.get(\"matched_skills\", []) or []),\n            \"missing_information\": \"；\".join(parsed.get(\"missing_information\", []) or []),\n            \"risk_flags\": \"；\".join(parsed.get(\"risk_flags\", []) or []),\n        }\n    except (json.JSONDecodeError, TypeError, ValueError) as exc:\n        fallback = {\n            \"error\": \"parse_failed\",\n            \"message\": \"模型输出不是合法 JSON；请人工复核 raw_output。\",\n        }\n        return {\n            \"parsed_json\": json.dumps(fallback, ensure_ascii=False),\n            \"parse_status\": f\"failed: {type(exc).__name__}\",\n            \"raw_output\": raw_output,\n            **empty,\n        }\n
+        code: |
+          import json
+          import re
+          
+          
+          def _extract_json(text: str) -> str:
+              """兼容模型偶发返回的 Markdown 围栏或前后说明文字。"""
+              cleaned = (text or "").strip()
+              cleaned = re.sub(r"^```(?:json)?\\s*|\\s*```$", "", cleaned, flags=re.IGNORECASE)
+              start, end = cleaned.find("{"), cleaned.rfind("}")
+              return cleaned[start : end + 1] if start >= 0 and end > start else cleaned
+          
+          
+          def main(llm_output: str) -> dict:
+              raw_output = llm_output or ""
+              empty = {
+                  "candidate_name": "", "match_score": 0, "recommendation": "",
+                  "skill_match": 0, "experience_relevance": 0,
+                  "project_relevance": 0, "overall_quality": 0,
+                  "matched_skills": "", "missing_information": "", "risk_flags": "",
+              }
+              try:
+                  parsed = json.loads(_extract_json(raw_output))
+                  dim = parsed.get("dimension_scores", {}) or {}
+                  return {
+                      "parsed_json": json.dumps(parsed, ensure_ascii=False),
+                      "parse_status": "success",
+                      "raw_output": raw_output,
+                      "candidate_name": parsed.get("candidate_name", ""),
+                      "match_score": parsed.get("match_score", 0),
+                      "recommendation": parsed.get("recommendation", ""),
+                      "skill_match": dim.get("skill_match", 0),
+                      "experience_relevance": dim.get("experience_relevance", 0),
+                      "project_relevance": dim.get("project_relevance", 0),
+                      "overall_quality": dim.get("overall_quality", 0),
+                      "matched_skills": "、".join(parsed.get("matched_skills", []) or []),
+                      "missing_information": "；".join(parsed.get("missing_information", []) or []),
+                      "risk_flags": "；".join(parsed.get("risk_flags", []) or []),
+                  }
+              except (json.JSONDecodeError, TypeError, ValueError) as exc:
+                  fallback = {
+                      "error": "parse_failed",
+                      "message": "模型输出不是合法 JSON；请人工复核 raw_output。",
+                  }
+                  return {
+                      "parsed_json": json.dumps(fallback, ensure_ascii=False),
+                      "parse_status": f"failed: {type(exc).__name__}",
+                      "raw_output": raw_output,
+                      **empty,
+                  }
+          
         code_language: python3
         outputs:
           parse_status:
@@ -395,6 +445,9 @@ workflow:
             children: null
             type: string
           risk_flags:
+            children: null
+            type: string
+          raw_output:
             children: null
             type: string
         selected: false
