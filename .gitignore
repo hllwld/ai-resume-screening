@@ -11,3 +11,4 @@ outputs/*.ndjson
 # Intermediate working files (widen script before/after previews)
 outputs/*_before_widen.png
 outputs/*_after_widen.png
+local/
