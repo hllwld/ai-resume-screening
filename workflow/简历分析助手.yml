@@ -282,10 +282,55 @@ workflow:
     - data:
         outputs:
         - value_selector:
-          - '1784705340226'
-          - text
+          - '1784710029621'
+          - candidate_name
           value_type: string
-          variable: result
+          variable: candidate_name
+        - value_selector:
+          - '1784710029621'
+          - match_score
+          value_type: number
+          variable: match_score
+        - value_selector:
+          - '1784710029621'
+          - recommendation
+          value_type: string
+          variable: recommendation
+        - value_selector:
+          - '1784710029621'
+          - skill_match
+          value_type: number
+          variable: skill_match
+        - value_selector:
+          - '1784710029621'
+          - experience_relevance
+          value_type: number
+          variable: experience_relevance
+        - value_selector:
+          - '1784710029621'
+          - project_relevance
+          value_type: number
+          variable: project_relevance
+        - value_selector:
+          - '1784710029621'
+          - overall_quality
+          value_type: number
+          variable: overall_quality
+        - value_selector:
+          - '1784710029621'
+          - matched_skills
+          value_type: string
+          variable: matched_skills
+        - value_selector:
+          - '1784710029621'
+          - missing_information
+          value_type: string
+          variable: missing_information
+        - value_selector:
+          - '1784710029621'
+          - risk_flags
+          value_type: string
+          variable: risk_flags
         - value_selector:
           - '1784710029621'
           - parsed_json
@@ -296,11 +341,6 @@ workflow:
           - parse_status
           value_type: string
           variable: parse_status
-        - value_selector:
-          - '1784710029621'
-          - raw_output
-          value_type: string
-          variable: raw_output
         selected: false
         title: 输出
         type: end
@@ -318,21 +358,7 @@ workflow:
       type: custom
       width: 242
     - data:
-        code: "import json\nimport re\n\n\ndef _extract_json(text: str) -> str:\n\
-          \    \"\"\"兼容模型偶发返回的 Markdown 围栏或前后说明文字。\"\"\"\n    cleaned = (text or \"\
-          \").strip()\n    cleaned = re.sub(r\"^```(?:json)?\\\\s*|\\\\s*```$\", \"\
-          \", cleaned, flags=re.IGNORECASE)\n    start, end = cleaned.find(\"{\"),\
-          \ cleaned.rfind(\"}\")\n    return cleaned[start : end + 1] if start >=\
-          \ 0 and end > start else cleaned\n\n\ndef main(llm_output: str) -> dict:\n\
-          \    raw_output = llm_output or \"\"\n    try:\n        parsed = json.loads(_extract_json(raw_output))\n\
-          \        return {\n            \"parsed_json\": json.dumps(parsed, ensure_ascii=False),\n\
-          \            \"parse_status\": \"success\",\n            \"raw_output\"\
-          : raw_output,\n        }\n    except (json.JSONDecodeError, TypeError, ValueError)\
-          \ as exc:\n        fallback = {\n            \"error\": \"parse_failed\"\
-          ,\n            \"message\": \"模型输出不是合法 JSON；请人工复核 raw_output。\",\n     \
-          \   }\n        return {\n            \"parsed_json\": json.dumps(fallback,\
-          \ ensure_ascii=False),\n            \"parse_status\": f\"failed: {type(exc).__name__}\"\
-          ,\n            \"raw_output\": raw_output,\n        }\n"
+        code: "import json\nimport re\n\n\ndef _extract_json(text: str) -> str:\n    \"\"\"兼容模型偶发返回的 Markdown 围栏或前后说明文字。\"\"\"\n    cleaned = (text or \"\").strip()\n    cleaned = re.sub(r\"^```(?:json)?\\\\s*|\\\\s*```$\", \"\", cleaned, flags=re.IGNORECASE)\n    start, end = cleaned.find(\"{\"), cleaned.rfind(\"}\")\n    return cleaned[start : end + 1] if start >= 0 and end > start else cleaned\n\n\ndef main(llm_output: str) -> dict:\n    raw_output = llm_output or \"\"\n    empty = {\n        \"candidate_name\": \"\", \"match_score\": 0, \"recommendation\": \"\",\n        \"skill_match\": 0, \"experience_relevance\": 0,\n        \"project_relevance\": 0, \"overall_quality\": 0,\n        \"matched_skills\": \"\", \"missing_information\": \"\", \"risk_flags\": \"\",\n    }\n    try:\n        parsed = json.loads(_extract_json(raw_output))\n        dim = parsed.get(\"dimension_scores\", {}) or {}\n        return {\n            \"parsed_json\": json.dumps(parsed, ensure_ascii=False),\n            \"parse_status\": \"success\",\n            \"raw_output\": raw_output,\n            \"candidate_name\": parsed.get(\"candidate_name\", \"\"),\n            \"match_score\": parsed.get(\"match_score\", 0),\n            \"recommendation\": parsed.get(\"recommendation\", \"\"),\n            \"skill_match\": dim.get(\"skill_match\", 0),\n            \"experience_relevance\": dim.get(\"experience_relevance\", 0),\n            \"project_relevance\": dim.get(\"project_relevance\", 0),\n            \"overall_quality\": dim.get(\"overall_quality\", 0),\n            \"matched_skills\": \"、\".join(parsed.get(\"matched_skills\", []) or []),\n            \"missing_information\": \"；\".join(parsed.get(\"missing_information\", []) or []),\n            \"risk_flags\": \"；\".join(parsed.get(\"risk_flags\", []) or []),\n        }\n    except (json.JSONDecodeError, TypeError, ValueError) as exc:\n        fallback = {\n            \"error\": \"parse_failed\",\n            \"message\": \"模型输出不是合法 JSON；请人工复核 raw_output。\",\n        }\n        return {\n            \"parsed_json\": json.dumps(fallback, ensure_ascii=False),\n            \"parse_status\": f\"failed: {type(exc).__name__}\",\n            \"raw_output\": raw_output,\n            **empty,\n        }\n
         code_language: python3
         outputs:
           parse_status:
@@ -341,7 +367,34 @@ workflow:
           parsed_json:
             children: null
             type: string
-          raw_output:
+          candidate_name:
+            children: null
+            type: string
+          match_score:
+            children: null
+            type: number
+          recommendation:
+            children: null
+            type: string
+          skill_match:
+            children: null
+            type: number
+          experience_relevance:
+            children: null
+            type: number
+          project_relevance:
+            children: null
+            type: number
+          overall_quality:
+            children: null
+            type: number
+          matched_skills:
+            children: null
+            type: string
+          missing_information:
+            children: null
+            type: string
+          risk_flags:
             children: null
             type: string
         selected: false

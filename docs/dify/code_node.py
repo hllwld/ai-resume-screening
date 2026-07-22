@@ -12,12 +12,29 @@ def _extract_json(text: str) -> str:
 
 def main(llm_output: str) -> dict:
     raw_output = llm_output or ""
+    empty = {
+        "candidate_name": "", "match_score": 0, "recommendation": "",
+        "skill_match": 0, "experience_relevance": 0,
+        "project_relevance": 0, "overall_quality": 0,
+        "matched_skills": "", "missing_information": "", "risk_flags": "",
+    }
     try:
         parsed = json.loads(_extract_json(raw_output))
+        dim = parsed.get("dimension_scores", {}) or {}
         return {
             "parsed_json": json.dumps(parsed, ensure_ascii=False),
             "parse_status": "success",
             "raw_output": raw_output,
+            "candidate_name": parsed.get("candidate_name", ""),
+            "match_score": parsed.get("match_score", 0),
+            "recommendation": parsed.get("recommendation", ""),
+            "skill_match": dim.get("skill_match", 0),
+            "experience_relevance": dim.get("experience_relevance", 0),
+            "project_relevance": dim.get("project_relevance", 0),
+            "overall_quality": dim.get("overall_quality", 0),
+            "matched_skills": "、".join(parsed.get("matched_skills", []) or []),
+            "missing_information": "；".join(parsed.get("missing_information", []) or []),
+            "risk_flags": "；".join(parsed.get("risk_flags", []) or []),
         }
     except (json.JSONDecodeError, TypeError, ValueError) as exc:
         fallback = {
@@ -28,4 +45,5 @@ def main(llm_output: str) -> dict:
             "parsed_json": json.dumps(fallback, ensure_ascii=False),
             "parse_status": f"failed: {type(exc).__name__}",
             "raw_output": raw_output,
+            **empty,
         }
