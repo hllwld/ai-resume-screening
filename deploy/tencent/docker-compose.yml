@@ -1,0 +1,47 @@
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    env_file:
+      - ${APP_ENV_FILE:-.env}
+    environment:
+      PORT: "10000"
+      QUOTA_DB_PATH: /data/quota.sqlite3
+    restart: unless-stopped
+    expose:
+      - "10000"
+    volumes:
+      - quota_data:/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:10000/api/health', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  quota_data:
+  caddy_data:
+  caddy_config:
