@@ -108,7 +108,8 @@ pnpm run dev
 - `DIFY_API_KEY`：已发布 Dify Workflow 的 API Key。
 - `APP_ACCESS_CODE`：演示访问口令，不要使用模型或 Dify 密钥作为口令。
 
-`SESSION_SECRET` 由 Render 自动生成。生产环境会强制校验以上安全配置，
+`APP_ACCESS_CODE` 至少需要 12 个字符；`SESSION_SECRET` 由 Render 自动生成。
+生产环境会强制校验以上安全配置，
 使用 HTTPS Cookie、隐藏 API 文档，并信任 Render 反向代理提供的客户端 IP。
 
 免费实例不支持持久磁盘，因此每日额度（IP 在内存中仅保存为不可逆摘要）、

@@ -37,8 +37,8 @@ async def lifespan(_: FastAPI):
         missing = []
         if not settings.dify_api_key:
             missing.append("DIFY_API_KEY")
-        if not settings.app_access_code:
-            missing.append("APP_ACCESS_CODE")
+        if len(settings.app_access_code) < 12:
+            missing.append("APP_ACCESS_CODE（至少 12 个字符）")
         if len(settings.session_secret) < 32:
             missing.append("SESSION_SECRET（至少 32 个字符）")
         if missing:
