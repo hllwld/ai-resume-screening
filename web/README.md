@@ -117,6 +117,10 @@ pnpm run dev
 启用持久磁盘和 `QUOTA_DB_PATH`。若以后开放注册或横向扩容，应把任务和额度
 迁移到 Redis/PostgreSQL。
 
+若 Render 要求 Blueprint 绑定付款方式，可改为手动创建单个 Web Service：
+选择 `codex/render-free` 分支、Docker 运行时、Singapore 区域和 Free 实例。
+仓库根目录的 `Dockerfile` 可被 Render 自动识别。
+
 ## 验证
 
 ```powershell
