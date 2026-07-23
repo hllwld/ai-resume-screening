@@ -6,7 +6,7 @@
 
 ## 前置条件
 
-1. 域名添加一条 `A` 记录，指向服务器公网 IP。
+1. 为根域名 `zerodot.top` 添加一条主机记录为 `@` 的 `A` 记录，指向服务器公网 IP `43.132.155.30`。
 2. 轻量服务器防火墙只额外开放 TCP 80、TCP 443 和 UDP 443。
 3. 在服务器中安装 Git 和 Docker Compose 插件。
 
@@ -28,7 +28,7 @@ docker compose logs --tail=100
 健康检查地址：
 
 ```text
-https://你的域名/api/health
+https://zerodot.top/api/health
 ```
 
 更新应用：

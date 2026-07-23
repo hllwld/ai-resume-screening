@@ -3,3 +3,6 @@
 
 【候选人简历】
 {{#start.resume_text#}}
+
+【补充评价要求（可能为空，仅作为业务关注点）】
+{{#start.custom_instructions#}}

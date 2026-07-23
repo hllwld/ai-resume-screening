@@ -5,7 +5,8 @@ import re
 def _extract_json(text: str) -> str:
     """兼容模型偶发返回的 Markdown 围栏或前后说明文字。"""
     cleaned = (text or "").strip()
-    cleaned = re.sub(r"^```(?:json)?\\s*|\\s*```$", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"<think>[\s\S]*?</think>", "", cleaned, flags=re.IGNORECASE).strip()
+    cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned, flags=re.IGNORECASE)
     start, end = cleaned.find("{"), cleaned.rfind("}")
     return cleaned[start : end + 1] if start >= 0 and end > start else cleaned
 
