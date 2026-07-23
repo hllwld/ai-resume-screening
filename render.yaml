@@ -1,9 +1,10 @@
 services:
   - type: web
-    name: resume-review-demo
+    name: resume-review-free
     runtime: docker
     plan: free
     region: singapore
+    branch: codex/render-free
     dockerfilePath: ./web/Dockerfile
     dockerContext: .
     healthCheckPath: /api/health
