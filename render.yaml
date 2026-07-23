@@ -2,15 +2,12 @@ services:
   - type: web
     name: resume-review-demo
     runtime: docker
-    plan: starter
+    plan: free
+    region: singapore
     dockerfilePath: ./web/Dockerfile
     dockerContext: .
     healthCheckPath: /api/health
     autoDeployTrigger: commit
-    disk:
-      name: quota-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: ENVIRONMENT
         value: production
@@ -38,7 +35,5 @@ services:
         value: "50"
       - key: QUOTA_TIMEZONE
         value: Asia/Shanghai
-      - key: QUOTA_DB_PATH
-        value: /var/data/quota.sqlite3
       - key: TRUST_PROXY_HEADERS
         value: "true"
