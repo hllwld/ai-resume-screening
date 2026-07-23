@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: resume-review-demo
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./web/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    disk:
+      name: quota-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DIFY_BASE_URL
+        value: https://api.dify.ai/v1
+      - key: DIFY_API_KEY
+        sync: false
+      - key: DIFY_CONCURRENCY
+        value: "3"
+      - key: DIFY_TIMEOUT_SECONDS
+        value: "120"
+      - key: TASK_TTL_SECONDS
+        value: "7200"
+      - key: APP_ACCESS_CODE
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: SESSION_TTL_SECONDS
+        value: "28800"
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: PER_IP_DAILY_RESUME_LIMIT
+        value: "10"
+      - key: GLOBAL_DAILY_RESUME_LIMIT
+        value: "50"
+      - key: QUOTA_TIMEZONE
+        value: Asia/Shanghai
+      - key: QUOTA_DB_PATH
+        value: /var/data/quota.sqlite3
+      - key: TRUST_PROXY_HEADERS
+        value: "true"
