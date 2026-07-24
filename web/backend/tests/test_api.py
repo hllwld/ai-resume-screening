@@ -2,12 +2,18 @@ import time
 
 from fastapi.testclient import TestClient
 
-from app.main import app, client
+from app.main import app, client, settings
 from app.models import DimensionScores, EvaluationResult
 
 
 def establish_session(test_client: TestClient) -> None:
     response = test_client.get("/api/session")
+    assert response.status_code == 200
+    if not response.json()["authenticated"]:
+        response = test_client.post(
+            "/api/auth/login",
+            json={"access_code": settings.app_access_code},
+        )
     assert response.status_code == 200
     assert response.json()["authenticated"] is True
 

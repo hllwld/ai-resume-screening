@@ -74,6 +74,12 @@ export interface QuotaStatus {
 export interface SessionStatus {
   authenticated: boolean;
   auth_required: boolean;
+  auth_methods: {
+    feishu: boolean;
+    access_code: boolean;
+  };
+  auth_provider: "feishu" | "access_code" | null;
+  display_name: string | null;
   expires_at: number;
   quota: QuotaStatus;
 }

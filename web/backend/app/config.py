@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     session_secret: str = ""
     session_ttl_seconds: int = 28800
     session_cookie_secure: bool = False
+    feishu_login_enabled: bool = False
+    feishu_app_id: str = ""
+    feishu_app_secret: str = ""
+    feishu_redirect_uri: str = ""
     per_ip_daily_resume_limit: int = 10
     global_daily_resume_limit: int = 50
     quota_timezone: str = "Asia/Shanghai"

@@ -41,6 +41,9 @@ const actionError = ref("");
 const privacyAccepted = ref(false);
 let poller: number | null = null;
 
+const authProviderLabel = computed(() =>
+  session.value?.auth_provider === "feishu" ? "飞书登录" : "口令登录",
+);
 const readyResumes = computed(() => resumes.value.filter((file) => file.state === "ready"));
 const isRunning = computed(() => task.value?.status === "running" || task.value?.status === "pending");
 const quota = computed(() => task.value?.quota || session.value?.quota);
@@ -125,6 +128,27 @@ async function submitLogin() {
   }
 }
 
+function startFeishuLogin() {
+  window.location.assign("/api/auth/feishu/start");
+}
+
+function readAuthCallbackError() {
+  const url = new URL(window.location.href);
+  const errorCode = url.searchParams.get("auth_error");
+  if (!errorCode) return;
+  const messages: Record<string, string> = {
+    cancelled: "飞书授权已取消，请重试或使用访问口令。",
+    invalid_state: "飞书登录请求已失效，请重新发起登录。",
+    token_failed: "飞书授权凭证获取失败，请稍后重试。",
+    user_unavailable: "无法获取飞书用户身份，请确认应用权限和可用范围。",
+    provider_unavailable: "飞书登录服务暂时不可用，请稍后重试。",
+    disabled: "飞书登录当前未启用，请使用访问口令。",
+  };
+  authError.value = messages[errorCode] || "飞书登录失败，请稍后重试。";
+  url.searchParams.delete("auth_error");
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
 async function signOut() {
   stopPolling();
   if (task.value) {
@@ -150,7 +174,10 @@ async function removeTask() {
   }
 }
 
-onMounted(loadSession);
+onMounted(() => {
+  readAuthCallbackError();
+  void loadSession();
+});
 onBeforeUnmount(stopPolling);
 </script>
 
@@ -167,19 +194,38 @@ onBeforeUnmount(stopPolling);
           <span class="brand-mark"><NIcon :component="Stars" /></span>
           <span class="hero-kicker">Private demo</span>
           <h1>简历评估工作台</h1>
-          <p>这是受限演示服务。请输入访问口令后继续。</p>
-          <NInput
-            v-model:value="accessCode"
-            type="password"
-            show-password-on="click"
-            placeholder="访问口令"
-            size="large"
-            @keyup.enter="submitLogin"
-          />
+          <p>企业测试成员可使用飞书登录，其他访客可使用访问口令。</p>
           <NAlert v-if="authError" type="error" :show-icon="false">{{ authError }}</NAlert>
-          <NButton type="primary" size="large" :disabled="!accessCode" @click="submitLogin">
-            进入工作台
+          <NButton
+            v-if="session?.auth_methods.feishu"
+            type="primary"
+            size="large"
+            @click="startFeishuLogin"
+          >
+            使用飞书登录
           </NButton>
+          <div
+            v-if="session?.auth_methods.feishu && session?.auth_methods.access_code"
+            class="auth-divider"
+          >
+            <span>或</span>
+          </div>
+          <template v-if="session?.auth_methods.access_code">
+            <NInput
+              v-model:value="accessCode"
+              type="password"
+              show-password-on="click"
+              placeholder="访问口令"
+              size="large"
+              @keyup.enter="submitLogin"
+            />
+            <NButton size="large" :disabled="!accessCode" @click="submitLogin">
+              使用访问口令
+            </NButton>
+          </template>
+          <small v-if="session?.auth_methods.feishu" class="auth-hint">
+            飞书登录仅支持已加入企业应用可用范围的成员
+          </small>
         </section>
       </div>
 
@@ -193,6 +239,10 @@ onBeforeUnmount(stopPolling);
             </span>
           </a>
           <div class="topbar-actions">
+            <div v-if="session.display_name" class="session-identity">
+              <strong>{{ session.display_name }}</strong>
+              <span>{{ authProviderLabel }}</span>
+            </div>
             <NTag round :bordered="false" class="safety-tag">
               <template #icon><NIcon :component="ShieldCheck" /></template>
               今日剩余 {{ quota?.per_ip_remaining ?? 0 }} 份 / 全站

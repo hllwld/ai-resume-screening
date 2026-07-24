@@ -25,6 +25,21 @@ docker compose logs --tail=100
 `.env` 中必须替换 `APP_DOMAIN`、`DIFY_API_KEY`、`APP_ACCESS_CODE` 和
 `SESSION_SECRET`。不要提交 `.env`。
 
+启用飞书企业自建应用登录前，在飞书开发者后台的安全设置中添加精确回调地址：
+
+```text
+https://zerodot.top/api/auth/feishu/callback
+```
+
+然后在 `.env` 中填写 `FEISHU_APP_ID`、`FEISHU_APP_SECRET`，并将
+`FEISHU_LOGIN_ENABLED` 改为 `true`。企业自建应用只允许应用可用范围内的同企业
+成员登录；访问口令入口会继续保留给外部访客。修改后执行：
+
+```bash
+docker compose up -d --build
+docker compose logs --tail=100 app
+```
+
 健康检查地址：
 
 ```text

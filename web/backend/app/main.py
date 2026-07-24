@@ -6,22 +6,29 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .config import get_settings
+from .config import Settings, get_settings
 from .dify import DifyClient
 from .export import build_workbook
+from .feishu import FeishuAuthClient, FeishuAuthError
 from .models import BatchCreate
 from .quota import DailyQuota, QuotaExceeded
-from .security import LoginThrottle, SessionManager, client_ip
+from .security import (
+    FEISHU_STATE_COOKIE,
+    LoginThrottle,
+    Session,
+    SessionManager,
+    client_ip,
+)
 from .tasks import TaskStore
 
 settings = get_settings()
 store = TaskStore(settings)
 client = DifyClient(settings)
+feishu_client = FeishuAuthClient(settings)
 quota = DailyQuota(settings)
 sessions = SessionManager(settings)
 login_throttle = LoginThrottle()
@@ -31,18 +38,33 @@ class LoginRequest(BaseModel):
     access_code: str = Field(min_length=1, max_length=256)
 
 
+def production_configuration_errors(config: Settings) -> list[str]:
+    errors = []
+    if not config.dify_api_key:
+        errors.append("DIFY_API_KEY")
+    if not config.app_access_code and not config.feishu_login_enabled:
+        errors.append("至少启用 APP_ACCESS_CODE 或 FEISHU_LOGIN_ENABLED")
+    if config.app_access_code and len(config.app_access_code) < 12:
+        errors.append("APP_ACCESS_CODE（启用时至少 12 个字符）")
+    if len(config.session_secret) < 32:
+        errors.append("SESSION_SECRET（至少 32 个字符）")
+    if config.feishu_login_enabled:
+        if not config.feishu_app_id:
+            errors.append("FEISHU_APP_ID")
+        if not config.feishu_app_secret:
+            errors.append("FEISHU_APP_SECRET")
+        if not config.feishu_redirect_uri.startswith("https://"):
+            errors.append("FEISHU_REDIRECT_URI（生产环境必须使用 HTTPS）")
+    return errors
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     if settings.environment == "production":
-        missing = []
-        if not settings.dify_api_key:
-            missing.append("DIFY_API_KEY")
-        if len(settings.app_access_code) < 12:
-            missing.append("APP_ACCESS_CODE（至少 12 个字符）")
-        if len(settings.session_secret) < 32:
-            missing.append("SESSION_SECRET（至少 32 个字符）")
-        if missing:
-            raise RuntimeError(f"生产环境缺少安全配置：{', '.join(missing)}")
+        errors = production_configuration_errors(settings)
+        if errors:
+            raise RuntimeError(f"生产环境缺少安全配置：{', '.join(errors)}")
+
     async def cleanup_expired_tasks() -> None:
         while True:
             await asyncio.sleep(min(60, max(5, settings.task_ttl_seconds)))
@@ -54,6 +76,7 @@ async def lifespan(_: FastAPI):
     with suppress(asyncio.CancelledError):
         await cleanup_runner
     await client.close()
+    await feishu_client.close()
 
 
 app = FastAPI(
@@ -119,24 +142,36 @@ async def health():
     return {"status": "ok"}
 
 
+async def session_payload(session: Session, request: Request) -> dict:
+    ip_address = client_ip(request, settings.trust_proxy_headers)
+    current_quota = await quota.current(ip_address)
+    return {
+        "authenticated": session.authenticated or not sessions.auth_required,
+        "auth_required": sessions.auth_required,
+        "auth_methods": sessions.auth_methods,
+        "auth_provider": session.auth_provider,
+        "display_name": session.display_name,
+        "expires_at": session.expires_at,
+        "quota": current_quota.public_dict(),
+    }
+
+
 @app.get("/api/session")
 async def get_session(request: Request, response: Response):
     session = sessions.from_request(request)
     if not session:
         session, token = sessions.issue(authenticated=not sessions.auth_required)
         sessions.set_cookie(response, token)
-    ip_address = client_ip(request, settings.trust_proxy_headers)
-    current_quota = await quota.current(ip_address)
-    return {
-        "authenticated": session.authenticated or not sessions.auth_required,
-        "auth_required": sessions.auth_required,
-        "expires_at": session.expires_at,
-        "quota": current_quota.public_dict(),
-    }
+    return await session_payload(session, request)
 
 
 @app.post("/api/auth/login")
 async def login(payload: LoginRequest, request: Request, response: Response):
+    if not sessions.access_code_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="访问口令登录未启用",
+        )
     ip_address = client_ip(request, settings.trust_proxy_headers)
     if not login_throttle.allow(ip_address):
         raise HTTPException(
@@ -148,15 +183,69 @@ async def login(payload: LoginRequest, request: Request, response: Response):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="访问口令不正确",
         )
-    session, token = sessions.issue(authenticated=True)
+    session, token = sessions.issue(
+        authenticated=True,
+        auth_provider="access_code",
+        display_name="口令访客",
+    )
     sessions.set_cookie(response, token)
-    current_quota = await quota.current(ip_address)
-    return {
-        "authenticated": True,
-        "auth_required": sessions.auth_required,
-        "expires_at": session.expires_at,
-        "quota": current_quota.public_dict(),
-    }
+    return await session_payload(session, request)
+
+
+@app.get("/api/auth/feishu/start")
+async def start_feishu_login():
+    if not sessions.feishu_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="飞书登录未启用",
+        )
+    state, state_token = sessions.create_oauth_state()
+    response = RedirectResponse(
+        feishu_client.authorization_url(state),
+        status_code=status.HTTP_302_FOUND,
+    )
+    sessions.set_oauth_state_cookie(response, state_token)
+    return response
+
+
+@app.get("/api/auth/feishu/callback")
+async def finish_feishu_login(
+    request: Request,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+):
+    def failed(error_code: str) -> RedirectResponse:
+        response = RedirectResponse(
+            f"/?auth_error={error_code}",
+            status_code=status.HTTP_302_FOUND,
+        )
+        sessions.delete_oauth_state_cookie(response)
+        return response
+
+    if not sessions.feishu_enabled:
+        return failed("disabled")
+    state_token = request.cookies.get(FEISHU_STATE_COOKIE)
+    if not sessions.verify_oauth_state(state, state_token):
+        return failed("invalid_state")
+    if error or not code:
+        return failed("cancelled")
+    try:
+        user = await feishu_client.get_user(code)
+    except FeishuAuthError as exc:
+        return failed(exc.code)
+
+    principal_id = sessions.principal_id("feishu", user.open_id)
+    session, token = sessions.issue(
+        authenticated=True,
+        auth_provider="feishu",
+        principal_id=principal_id,
+        display_name=user.display_name[:80],
+    )
+    response = RedirectResponse("/", status_code=status.HTTP_302_FOUND)
+    sessions.delete_oauth_state_cookie(response)
+    sessions.set_cookie(response, token)
+    return response
 
 
 @app.post("/api/auth/logout", status_code=204)

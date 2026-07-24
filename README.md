@@ -6,13 +6,14 @@
 
 > 在线演示：[https://zerodot.top](https://zerodot.top)
 >
-> 当前为受限作品集服务，需要访问口令。
+> 当前为受限作品集服务，支持飞书企业成员登录和访问口令登录。
 
 ## 项目能力
 
 - 选择文件夹或多个 PDF，浏览器端使用 PDF.js 提取文字，原始文件不会上传至后端。
 - 填写岗位 JD，并可追加受控的补充评价要求。
 - FastAPI 隐藏 Dify API Key，控制并发、任务归属、超时、重试和每日调用额度。
+- 支持飞书企业自建应用 OAuth 登录，并保留访问口令供企业外访客体验。
 - Dify Workflow 根据明确评分规则输出结构化 JSON；Code 节点处理代码围栏、
   `<think>` 内容和解析失败兜底。
 - 页面实时显示批次进度，支持结果筛选、排序、详情查看和任务取消。
@@ -35,7 +36,7 @@ flowchart LR
 
 ## 使用在线演示
 
-1. 打开在线演示地址并输入访问口令。
+1. 打开在线演示地址；企业测试成员可使用飞书登录，其他访客使用访问口令。
 2. 选择简历文件夹，或一次选择多个 PDF。
 3. 填写岗位 JD；补充评价要求为选填项。
 4. 点击“批量评估”，查看逐份状态和总体进度。
@@ -71,11 +72,18 @@ DIFY_CONCURRENCY=3
 DIFY_TIMEOUT_SECONDS=120
 TASK_TTL_SECONDS=7200
 
-# 本地开发可留空；公网生产环境必须至少 12 个字符。
+# 访问口令和飞书登录都关闭时，本地开发不要求登录。
+# 公网生产环境启用访问口令时必须至少 12 个字符。
 APP_ACCESS_CODE=
 # 公网生产环境必须使用至少 32 个随机字符。
 SESSION_SECRET=
 SESSION_COOKIE_SECURE=false
+
+# 完成飞书企业自建应用配置后再启用。
+FEISHU_LOGIN_ENABLED=false
+FEISHU_APP_ID=
+FEISHU_APP_SECRET=
+FEISHU_REDIRECT_URI=http://127.0.0.1:8000/api/auth/feishu/callback
 
 PER_IP_DAILY_RESUME_LIMIT=10
 GLOBAL_DAILY_RESUME_LIMIT=50
@@ -145,8 +153,14 @@ Vite 开发地址为 <http://127.0.0.1:5173>，`/api` 会代理到 FastAPI。
 - `quota_data`：持久化每日限额 SQLite 数据库。
 
 部署配置位于 [`deploy/tencent/`](deploy/tencent/README.md)。服务器需要开放 TCP
-80、TCP 443 和 UDP 443；Dify API Key、访问口令和会话密钥只保存在服务器
-`.env` 中。
+80、TCP 443 和 UDP 443；Dify API Key、访问口令、飞书 App Secret 和会话
+密钥只保存在服务器 `.env` 中。
+
+飞书登录使用企业自建应用，仅对同一企业中被加入应用可用范围的成员开放。后台
+需要登记回调地址 `https://zerodot.top/api/auth/feishu/callback`，随后填写
+`FEISHU_APP_ID`、`FEISHU_APP_SECRET` 并启用 `FEISHU_LOGIN_ENABLED`。服务端
+只用飞书身份创建本站签名会话，不保存飞书访问令牌，也不读取邮箱、手机号或完整
+通讯录。
 
 更新服务：
 
