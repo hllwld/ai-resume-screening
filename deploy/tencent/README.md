@@ -58,3 +58,16 @@ docker compose up -d --build
 ```bash
 docker compose logs -f --tail=200 app caddy
 ```
+
+## 同机部署英文作品集
+
+英文版 `ai-resume-review-workspace` 通过外部 Docker 网络
+`resume-public` 接入当前 Caddy，不重复占用 80/443 端口。首次部署前执行：
+
+```bash
+docker network create resume-public
+```
+
+随后重新创建当前 Caddy 服务，再按照英文仓库
+`deploy/tencent/README.md` 启动英文应用。`resume.zerodot.top` 的 A 记录需指向
+同一台服务器。

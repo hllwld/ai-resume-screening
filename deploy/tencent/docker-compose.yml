@@ -32,6 +32,9 @@ services:
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
     restart: unless-stopped
+    networks:
+      default:
+      resume_public:
     ports:
       - "80:80"
       - "443:443"
@@ -45,3 +48,8 @@ volumes:
   quota_data:
   caddy_data:
   caddy_config:
+
+networks:
+  resume_public:
+    external: true
+    name: resume-public
